@@ -1,0 +1,64 @@
+<aside id="sidebar" class="sidebar" role="navigation" aria-label="Menu principal">
+
+  <div class="sidebar-header">
+    <div class="sidebar-brand">
+      <div class="brand-logo" aria-hidden="true"><i class="fa-solid fa-cake-candles"></i></div>
+      <div class="brand-info">
+        <div class="brand-title">FEST</div>
+        <div class="brand-sub muted">Sistema de Gestão</div>
+      </div>
+    </div>
+    <button class="sidebar-toggle" type="button" aria-label="Recolher menu" aria-expanded="true">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+  </div>
+
+  <nav class="sidebar-nav">
+
+    <a class="nav-item" href="/dashboard"><i class="fa-solid fa-cart-shopping ni"></i><span>Pedidos</span></a>
+
+    <a class="nav-item" href="/relatorios"><i class="fa-solid fa-chart-line ni"></i><span>Relatórios</span></a>
+
+
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <span class="sidebar-user-avatar"><i class="fa-solid fa-user"></i></span>
+      <span class="sidebar-user-copy">
+        <strong>{{#if user}}{{user.name}}{{else}}Usuário{{/if}}</strong>
+        <small>Conta ativa</small>
+      </span>
+    </div>
+    <button class="nav-item logout" onclick="window.location.href='/logout'"><i class="fa-solid fa-right-from-bracket ni"></i><span>Sair</span></button>
+    <div class="copyright">© 2026 Sistema de Festas</div>
+  </div>
+
+</aside>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const sidebar = document.getElementById('sidebar');
+  const toggle = document.querySelector('.sidebar-toggle');
+  if (sidebar && toggle) {
+    toggle.addEventListener('click', function(){
+      const collapsed = sidebar.classList.toggle('is-collapsed');
+      toggle.setAttribute('aria-expanded', String(!collapsed));
+      toggle.setAttribute('aria-label', collapsed ? 'Expandir menu' : 'Recolher menu');
+    });
+  }
+  const links = document.querySelectorAll('.sidebar-nav .nav-item');
+  const path = window.location.pathname.replace(/\/$/, '') || '/dashboard';
+  links.forEach(link => {
+    const href = link.getAttribute('href') || link.dataset.href || '';
+    if(!href) return;
+    // marca ativo se for igual ou prefixo (ex: /produtos/123)
+    if(path === href || path.indexOf(href) === 0) {
+      link.classList.add('active');
+      // marcar a seção pai se necessário
+      const section = link.closest('.sidebar-section');
+      if(section) section.classList.add('open');
+    }
+  });
+});
+</script>

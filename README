@@ -1,0 +1,34 @@
+# Marmitaria — Painel de Vendas
+
+Aplicação web em **Node.js + Express + Handlebars + MySQL + Passport**, mantendo a arquitetura modular do projeto original.
+
+## Funcionalidades
+
+- Login com sessão e senha criptografada com bcrypt.
+- Cadastro de nova venda.
+- Cálculo automático de subtotal, adicionais, bebidas, frete, desconto e total.
+- Cliente, produto/marmita, tamanho, quantidade e forma de pagamento vindos do banco.
+- Listagem de vendas recentes.
+- Relatórios com filtros por período, pagamento e produto.
+- Indicadores de total vendido, pedidos, quantidade, fretes, bebidas e descontos.
+- Vendas por dia, formas de pagamento, produtos mais vendidos e vendas do período.
+
+## Banco de dados
+
+1. Crie o banco executando `database/schema.sql`.
+2. Execute `database/seed.sql`.
+3. Confira o `.env` com os dados do MySQL.
+
+Login inicial:
+
+- E-mail: `admin@marmitaria.com`
+- Senha: `123456`
+
+## Executar
+
+```bash
+npm install
+npm start
+```
+
+Acesse `http://localhost:3000`.

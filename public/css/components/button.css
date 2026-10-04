@@ -1,0 +1,99 @@
+/* =========================
+   BOTÕES
+========================= */
+
+.btn {
+    all: unset;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: auto;
+    height: var(--control-height);
+    padding: 0 16px;
+    border-radius: var(--control-radius);
+    font-family: inherit;
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+}
+
+.btn:hover {
+    opacity: .9;
+    transform: translateY(-1px);
+}
+
+.btn:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+    transform: none;
+    pointer-events: none;
+}
+
+/* Cores */
+
+.btn-primary {
+    background: var(--primary);
+    color: var(--primary-fg);
+}
+
+.btn-secondary {
+    background: var(--color-background);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+    background: #e7eef1;
+}
+
+.btn-edit {
+    background: #f5a623;
+    color: #fff;
+}
+
+.btn-delete {
+    background: #d92d20;
+    color: #fff;
+}
+
+.btn-teal {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.btn-blue {
+    background: var(--color-info);
+    color: #fff;
+}
+
+.btn-green {
+    background: var(--color-success);
+    color: #fff;
+}
+
+.btn-gray {
+    background: var(--color-text-muted);
+    color: #fff;
+}
+
+/* =========================
+   CLIENTE
+========================= */
+
+.btn-dashed {
+    width: 100%;
+    padding: 1rem;
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    background: #f9fafb;
+    color: #4b5563;
+    cursor: pointer;
+}
+
+.btn-dashed:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary-dark);
+    background: var(--color-primary-light);
+}

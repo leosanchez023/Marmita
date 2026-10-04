@@ -1,0 +1,194 @@
+<link rel="stylesheet" href="/css/pages/marmitaria.css">
+
+<div class="marmita-page" data-page-title="Nova venda" data-page-subtitle="Adicione os produtos, confira os valores e finalize a venda.">
+  <section class="form-card">
+    <form id="vendaForm">
+      <div class="form-grid sale-grid">
+        <div class="field">
+          <label for="data_venda">DATA DA VENDA</label>
+          <input type="date" id="data_venda" name="data_venda" required>
+        </div>
+
+        <div class="field">
+          <label>Nº DO PEDIDO</label>
+          <input type="text" value="Automático" disabled>
+        </div>
+
+        <div class="field wide">
+          <label for="cliente_id">CLIENTE</label>
+          <select id="cliente_id" name="cliente_id">
+            <option value="">Consumidor</option>
+            {{#each clientes}}
+              <option value="{{id}}">{{nome}}{{#if telefone}} — {{telefone}}{{/if}}</option>
+            {{/each}}
+          </select>
+        </div>
+      </div>
+
+      <div class="item-builder">
+        <div class="section-heading">
+          <div>
+            <h2>Adicionar item</h2>
+            <p>Selecione um produto cadastrado no banco.</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="produto_id">PRODUTO / MARMITA</label>
+            <select id="produto_id">
+              <option value="">Selecione um produto</option>
+              {{#each produtos}}
+                <option
+                  value="{{id}}"
+                  data-preco="{{preco}}"
+                  data-categoria="{{categoria}}">
+                  {{nome}} — R$ {{preco}}
+                </option>
+              {{/each}}
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="tamanho">TAMANHO</label>
+            <select id="tamanho">
+              <option value="UNICO">Único</option>
+              <option value="P">P</option>
+              <option value="M">M</option>
+              <option value="G">G</option>
+              <option value="GG">GG</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="quantidade">QUANTIDADE</label>
+            <input type="number" min="1" value="1" id="quantidade">
+          </div>
+
+          <div class="field">
+            <label for="valor_unitario">VALOR UNITÁRIO</label>
+            <input type="number" min="0" step="0.01" value="0.00" id="valor_unitario">
+          </div>
+        </div>
+
+        <button class="btn-primary" type="button" id="adicionarItem">
+          <i class="fa-solid fa-plus"></i> Adicionar item
+        </button>
+      </div>
+
+      <div class="sale-items">
+        <div class="section-heading">
+          <div>
+            <h2>Itens da venda</h2>
+            <p id="itensMensagem">Nenhum item adicionado.</p>
+          </div>
+          <span id="itensCount">0 item(s)</span>
+        </div>
+
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>PRODUTO</th>
+                <th>TAMANHO</th>
+                <th>QTD.</th>
+                <th>UNITÁRIO</th>
+                <th>SUBTOTAL</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="itensBody">
+              <tr>
+                <td colspan="6" class="empty">Nenhum item adicionado.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="form-grid sale-grid">
+        <div class="field">
+          <label for="adicional">ADICIONAL</label>
+          <input type="number" min="0" step="0.01" value="0.00" id="adicional" name="adicional">
+        </div>
+        <div class="field">
+          <label for="bebidas">BEBIDAS</label>
+          <input type="number" min="0" step="0.01" value="0.00" id="bebidas" name="bebidas">
+        </div>
+        <div class="field">
+          <label for="frete">FRETE</label>
+          <input type="number" min="0" step="0.01" value="0.00" id="frete" name="frete">
+        </div>
+        <div class="field">
+          <label for="desconto">DESCONTO</label>
+          <input type="number" min="0" step="0.01" value="0.00" id="desconto" name="desconto">
+        </div>
+        <div class="field">
+          <label for="forma_pagamento_id">FORMA DE PAGAMENTO</label>
+          <select id="forma_pagamento_id" name="forma_pagamento_id">
+            {{#each formasPagamento}}
+              <option value="{{id}}">{{nome}}</option>
+            {{/each}}
+          </select>
+        </div>
+        <div class="field wide">
+          <label for="observacao">OBSERVAÇÃO</label>
+          <input type="text" id="observacao" name="observacao">
+        </div>
+      </div>
+
+      <div class="totals-box">
+        <div><span>SUBTOTAL</span><strong id="subtotalTotal">R$ 0,00</strong></div>
+        <div><span>TOTAL DO PEDIDO</span><strong id="totalPedido">R$ 0,00</strong></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" type="submit">Salvar venda</button>
+        <button class="btn-secondary" type="button" id="limparBtn">Limpar formulário</button>
+      </div>
+
+      <p class="form-message" id="formMessage"></p>
+    </form>
+  </section>
+
+  <section class="recent-section">
+    <div class="section-heading">
+      <div>
+        <h2>Vendas recentes</h2>
+        <p>Últimas vendas registradas no sistema.</p>
+      </div>
+      <span>{{vendas.length}} registro(s)</span>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>PEDIDO</th>
+            <th>CLIENTE</th>
+            <th>DATA</th>
+            <th>ITENS</th>
+            <th>PAGAMENTO</th>
+            <th>TOTAL</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each vendas}}
+            <tr>
+              <td>#{{numero_pedido}}</td>
+              <td>{{cliente}}</td>
+              <td>{{data_venda}}</td>
+              <td>{{itens}}</td>
+              <td>{{forma_pagamento}}</td>
+              <td>{{moeda total}}</td>
+            </tr>
+          {{else}}
+            <tr><td colspan="6" class="empty">Nenhuma venda cadastrada.</td></tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script src="/js/vendas.js"></script>

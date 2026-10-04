@@ -1,0 +1,48 @@
+@media (max-width:768px) {
+
+  .main {
+    padding:20px;
+  }
+
+  .kpi-grid {
+    grid-template-columns:1fr;
+  }
+
+  .form-grid {
+    grid-template-columns:1fr;
+  }
+
+  .page-header {
+    flex-direction:column;
+    align-items:flex-start;
+    gap:12px;
+  }
+
+  .table-wrap,
+  .table-container {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrap table,
+  .table-container table {
+    min-width: 680px;
+  }
+
+  .btn,
+  .btn-primary,
+  .btn-secondary {
+    max-width: 100%;
+  }
+
+  .modal-overlay {
+    padding: 12px;
+  }
+
+  .modal {
+    max-height: calc(100vh - 24px);
+    padding: 18px;
+  }
+
+}

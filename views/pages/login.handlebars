@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Login — Marmitaria</title><link rel="stylesheet" href="/css/pages/login.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"></head>
+<body class="login-page">
+  <div class="login-decoration"></div>
+  <main class="login-card">
+    <div class="login-logo"><div class="brand-icon"><i class="fa-solid fa-bowl-food"></i></div><h1>Marmitaria</h1><p>Painel de vendas</p></div>
+    {{#if mensagem}}<div class="login-error">{{mensagem}}</div>{{/if}}
+    <form action="/login" method="post">
+      <label>E-mail<input type="email" name="email" placeholder="seu@email.com" required autofocus></label>
+      <label>Senha<div class="password-wrap"><input type="password" name="senha" id="senha" placeholder="Sua senha" required><button type="button" id="toggleSenha" aria-label="Mostrar senha"><i class="fa-regular fa-eye"></i></button></div></label>
+      <button type="submit">Entrar</button>
+    </form>
+    <small>Acesso administrativo</small>
+  </main>
+  <script src="/js/login.js"></script>
+</body></html>

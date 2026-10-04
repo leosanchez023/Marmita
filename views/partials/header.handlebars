@@ -1,0 +1,16 @@
+<header class="marmita-header">
+  <div class="brand-block">
+    <div class="brand-icon"><i class="fa-solid fa-bowl-food"></i></div>
+    <div><div class="brand-title">Marmitaria</div><div class="brand-subtitle">PAINEL DE VENDAS</div></div>
+  </div>
+  <nav class="top-nav">
+    <a href="/vendas/nova" data-nav="/vendas/nova">Vendas</a>
+    <a href="/relatorios" data-nav="/relatorios">Relatórios</a>
+    <a href="/logout" class="logout-link" title="Sair"><i class="fa-solid fa-right-from-bracket"></i></a>
+  </nav>
+</header>
+<script>
+  document.querySelectorAll('[data-nav]').forEach(link => {
+    if (window.location.pathname === link.dataset.nav) link.classList.add('active');
+  });
+</script>

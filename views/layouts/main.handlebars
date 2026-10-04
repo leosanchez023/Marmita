@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marmitaria</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body>
+  <div class="marmita-app">
+    {{> header}}
+    <main class="page-content">{{{body}}}</main>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const page = document.querySelector('.marmita-page');
+      if (!page) return;
+      const title = page.dataset.pageTitle;
+      const subtitle = page.dataset.pageSubtitle;
+      document.querySelectorAll('[data-header-title]').forEach(el => el.textContent = title || 'Marmitaria');
+      document.querySelectorAll('[data-header-subtitle]').forEach(el => el.textContent = subtitle || 'Painel de vendas');
+    });
+  </script>
+</body>
+</html>

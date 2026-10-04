@@ -1,0 +1,47 @@
+.alert {
+    display: flex;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 12px;
+    align-items: flex-start;
+}
+
+.alert i {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.alert .title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.alert .desc {
+    font-size: 12px;
+    opacity: .85;
+}
+
+.a-success {
+    background: #e8f8f1;
+    color: #087246;
+    border: 1px solid #b6e7d0;
+}
+
+.a-warning {
+    background: #fff5df;
+    color: #9a5b00;
+    border: 1px solid #f1d18d;
+}
+
+.a-danger {
+    background: #fdebed;
+    color: #ae2735;
+    border: 1px solid #f2bfc5;
+}
+
+.a-info {
+    background: #e8f2fb;
+    color: #1e6093;
+    border: 1px solid #bfd9ec;
+}
