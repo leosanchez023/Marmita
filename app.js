@@ -10,7 +10,6 @@ import flash from 'connect-flash';
 import passport from 'passport';
 import auth from './src/config/auth.js';
 import { protegerAplicacao } from './src/config/access.js';
-import './database/connection.js';
 
 import loginRoutes from './src/modules/login/login.routes.js';
 import vendasRoutes from './src/modules/vendas.routes.js';

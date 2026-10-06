@@ -1,59 +1,83 @@
-import db from '../../database/connection.js';
+import supabase from '../config/supabase.js';
+
+async function consultarTodos(consulta) {
+  const registros = [];
+  const tamanhoPagina = 1000;
+
+  for (let inicio = 0; ; inicio += tamanhoPagina) {
+    const { data, error } = await consulta.range(inicio, inicio + tamanhoPagina - 1);
+    if (error) throw error;
+    registros.push(...(data || []));
+    if (!data || data.length < tamanhoPagina) return registros;
+  }
+}
 
 export async function listarProdutos() {
-  const [rows] = await db.query(`
-    SELECT id, nome, categoria, preco
-    FROM produtos
-    WHERE ativo = 1
-    ORDER BY categoria, nome
-  `);
-  return rows;
+  return consultarTodos(supabase
+    .from('produtos')
+    .select('id, nome, categoria, preco')
+    .eq('ativo', true)
+    .order('categoria')
+    .order('nome'));
 }
 
 
 export async function listarFormasPagamento() {
-  const [rows] = await db.query(`
-    SELECT id, nome
-    FROM formas_pagamento
-    WHERE ativo = 1
-    ORDER BY id
-  `);
-  return rows;
+  return consultarTodos(supabase
+    .from('formas_pagamento')
+    .select('id, nome')
+    .eq('ativo', true)
+    .order('id'));
 }
 
 export async function listarClientes() {
-  const [rows] = await db.query(`
-    SELECT id, nome, telefone
-    FROM clientes
-    WHERE ativo = 1
-    ORDER BY nome
-  `);
-  return rows;
+  return consultarTodos(supabase
+    .from('clientes')
+    .select('id, nome, telefone')
+    .eq('ativo', true)
+    .order('nome'));
 }
 
 export async function listarVendasRecentes() {
-  const [rows] = await db.query(`
-    SELECT
-      v.id,
-      v.numero_pedido,
-      DATE_FORMAT(v.data_venda, '%d/%m/%Y') AS data_venda,
-      COALESCE(c.nome, 'Consumidor') AS cliente,
-      v.total,
-      COALESCE(fp.nome, 'Não informado') AS forma_pagamento,
-      GROUP_CONCAT(
-        CONCAT(p.nome, ' x', vi.quantidade)
-        SEPARATOR ', '
-      ) AS itens
-    FROM vendas v
-    LEFT JOIN clientes c ON c.id = v.cliente_id
-    LEFT JOIN formas_pagamento fp ON fp.id = v.forma_pagamento_id
-    JOIN venda_itens vi ON vi.venda_id = v.id
-    JOIN produtos p ON p.id = vi.produto_id
-    GROUP BY v.id, v.numero_pedido, v.data_venda, c.nome, v.total, fp.nome
-    ORDER BY v.data_venda DESC, v.id DESC
-    LIMIT 15
-  `);
-  return rows;
+  const vendas = await consultarTodos(supabase
+    .from('vw_vendas_relatorio')
+    .select('id, numero_pedido, data_venda, cliente, forma_pagamento, total')
+    .order('data_venda', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(15));
+  const ids = vendas.map(venda => venda.id);
+  const itens = ids.length
+    ? await consultarTodos(supabase
+      .from('venda_itens')
+      .select('venda_id, quantidade, produto_id')
+      .in('venda_id', ids))
+    : [];
+  const produtoIds = [...new Set(itens.map(item => item.produto_id))];
+  const produtos = produtoIds.length
+    ? await consultarTodos(supabase.from('produtos').select('id, nome').in('id', produtoIds))
+    : [];
+  const nomes = new Map(produtos.map(produto => [produto.id, produto.nome]));
+  const itensPorVenda = new Map();
+
+  for (const item of itens) {
+    const lista = itensPorVenda.get(item.venda_id) || [];
+    lista.push(`${nomes.get(item.produto_id) || 'Produto'} x${item.quantidade}`);
+    itensPorVenda.set(item.venda_id, lista);
+  }
+
+  return vendas.map(venda => ({
+    ...venda,
+    data_venda: dataBr(venda.data_venda),
+    cliente: venda.cliente || 'Consumidor',
+    forma_pagamento: venda.forma_pagamento || 'Não informado',
+    itens: (itensPorVenda.get(venda.id) || []).join(', ')
+  }));
+}
+
+function dataBr(value) {
+  if (!value) return '';
+  const [ano, mes, dia] = value.slice(0, 10).split('-');
+  return `${dia}/${mes}/${ano}`;
 }
 
 function valorNumero(value) {
@@ -62,11 +86,9 @@ function valorNumero(value) {
 }
 
 export async function criarVenda(payload, usuarioId) {
-  const conn = await db.getConnection();
+  let vendaId;
 
   try {
-    await conn.beginTransaction();
-
     let itens = payload.itens;
 
     if (typeof itens === 'string') {
@@ -105,16 +127,18 @@ export async function criarVenda(payload, usuarioId) {
       const produtoId = Number(item.produto_id);
       const quantidade = Math.max(1, Number(item.quantidade || 1));
 
-      const [produtoRows] = await conn.query(
-        `SELECT id, nome, preco FROM produtos WHERE id = ? AND ativo = 1`,
-        [produtoId]
-      );
+      const { data: produto, error: produtoError } = await supabase
+        .from('produtos')
+        .select('id, nome, preco')
+        .eq('id', produtoId)
+        .eq('ativo', true)
+        .maybeSingle();
 
-      if (!produtoRows.length) {
+      if (produtoError) throw produtoError;
+      if (!produto) {
         throw new Error(`Produto ${produtoId} não encontrado.`);
       }
 
-      const produto = produtoRows[0];
       const valorUnitario = Math.max(
         0,
         valorNumero(item.valor_unitario) || Number(produto.preco)
@@ -147,62 +171,59 @@ export async function criarVenda(payload, usuarioId) {
         TRANSFERENCIA: 'Transferência'
       };
       const nome = mapa[payload.forma_pagamento] || payload.forma_pagamento;
-      const [fp] = await conn.query(
-        `SELECT id FROM formas_pagamento WHERE nome = ? LIMIT 1`,
-        [nome]
-      );
-      formaPagamentoId = fp[0]?.id || null;
+      const { data: formaPagamento, error: pagamentoError } = await supabase
+        .from('formas_pagamento')
+        .select('id')
+        .eq('nome', nome)
+        .maybeSingle();
+      if (pagamentoError) throw pagamentoError;
+      formaPagamentoId = formaPagamento?.id || null;
     }
 
-    const [result] = await conn.query(`
-      INSERT INTO vendas
-        (data_venda, cliente_id, usuario_id, forma_pagamento_id,
-         adicional, bebidas, frete, desconto, subtotal, total, observacao)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      dataVenda,
-      payload.cliente_id ? Number(payload.cliente_id) : null,
-      usuarioId || null,
-      formaPagamentoId,
-      adicional,
-      bebidas,
-      frete,
-      desconto,
-      subtotal,
-      total,
-      payload.observacao || null
-    ]);
-
-    const vendaId = result.insertId;
+    const { data: venda, error: vendaError } = await supabase
+      .from('vendas')
+      .insert({
+        data_venda: dataVenda,
+        cliente_id: payload.cliente_id ? Number(payload.cliente_id) : null,
+        usuario_id: usuarioId || null,
+        forma_pagamento_id: formaPagamentoId,
+        adicional,
+        bebidas,
+        frete,
+        desconto,
+        subtotal,
+        total,
+        observacao: payload.observacao || null
+      })
+      .select('id')
+      .single();
+    if (vendaError) throw vendaError;
+    vendaId = venda.id;
     const numeroPedido = String(vendaId).padStart(4, '0');
 
-    await conn.query(
-      `UPDATE vendas SET numero_pedido = ? WHERE id = ?`,
-      [numeroPedido, vendaId]
-    );
+    const { error: numeroError } = await supabase
+      .from('vendas')
+      .update({ numero_pedido: numeroPedido })
+      .eq('id', vendaId);
+    if (numeroError) throw numeroError;
 
-    for (const item of itensValidos) {
-      await conn.query(`
-        INSERT INTO venda_itens
-          (venda_id, produto_id, tamanho, quantidade, valor_unitario, subtotal)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, [
-        vendaId,
-        item.produtoId,
-        item.tamanho,
-        item.quantidade,
-        item.valorUnitario,
-        item.subtotal
-      ]);
-    }
-
-    await conn.commit();
+    const itensVenda = itensValidos.map(item => ({
+      venda_id: vendaId,
+      produto_id: item.produtoId,
+      tamanho: item.tamanho,
+      quantidade: item.quantidade,
+      valor_unitario: item.valorUnitario,
+      subtotal: item.subtotal
+    }));
+    const { error: itensError } = await supabase.from('venda_itens').insert(itensVenda);
+    if (itensError) throw itensError;
 
     return { id: vendaId, numeroPedido, total };
   } catch (error) {
-    await conn.rollback();
+    if (vendaId) {
+      const { error: rollbackError } = await supabase.from('vendas').delete().eq('id', vendaId);
+      if (rollbackError) console.error('Não foi possível desfazer a venda incompleta:', rollbackError);
+    }
     throw error;
-  } finally {
-    conn.release();
   }
 }
