@@ -1,29 +1,37 @@
 const form = document.getElementById('vendaForm');
-const produto = document.getElementById('produto_id');
-const quantidade = document.getElementById('quantidade');
-const valor = document.getElementById('valor_unitario');
-const tamanho = document.getElementById('tamanho');
 const data = document.getElementById('data_venda');
+const tamanho = document.getElementById('tamanho');
+const quantidade = document.getElementById('quantidade');
+const valorUnitario = document.getElementById('valor_unitario');
 const itensBody = document.getElementById('itensBody');
 const itensMensagem = document.getElementById('itensMensagem');
 const itensCount = document.getElementById('itensCount');
 const fields = ['adicional', 'bebidas', 'frete', 'desconto']
   .map(id => document.getElementById(id));
-
 const itens = [];
-const money = n => Number(n || 0).toLocaleString('pt-BR', {
+
+const money = value => Number(value || 0).toLocaleString('pt-BR', {
   style: 'currency',
   currency: 'BRL'
 });
-const num = el => Number(el?.value || 0);
 
 if (data) data.value = new Date().toISOString().slice(0, 10);
 
-function renderItens() {
-  if (!itensBody) return;
+function recalcular() {
+  const subtotal = itens.reduce((sum, item) => sum + item.subtotal, 0);
+  const adicional = fields[0]?.valueAsNumber || 0;
+  const bebidas = fields[1]?.valueAsNumber || 0;
+  const frete = fields[2]?.valueAsNumber || 0;
+  const desconto = fields[3]?.valueAsNumber || 0;
+  const total = Math.max(0, subtotal + adicional + bebidas + frete - desconto);
 
+  document.getElementById('subtotalTotal').textContent = money(subtotal);
+  document.getElementById('totalPedido').textContent = money(total);
+}
+
+function renderItens() {
   if (!itens.length) {
-    itensBody.innerHTML = '<tr><td colspan="6" class="empty">Nenhum item adicionado.</td></tr>';
+    itensBody.innerHTML = '<tr><td colspan="5" class="empty">Nenhum item adicionado.</td></tr>';
     itensMensagem.textContent = 'Nenhum item adicionado.';
     itensCount.textContent = '0 item(s)';
     recalcular();
@@ -32,23 +40,19 @@ function renderItens() {
 
   itensBody.innerHTML = itens.map((item, index) => `
     <tr>
-      <td>${item.nome}</td>
       <td>${item.tamanho}</td>
       <td>${item.quantidade}</td>
       <td>${money(item.valor_unitario)}</td>
       <td>${money(item.subtotal)}</td>
-      <td>
-        <button type="button" class="btn-remove-item" data-index="${index}" title="Remover">
-          <i class="fa-solid fa-trash"></i>
-        </button>
-      </td>
+      <td><button type="button" class="btn-remove-item" data-index="${index}" title="Remover">
+        <i class="fa-solid fa-trash"></i>
+      </button></td>
     </tr>
   `).join('');
-
   itensMensagem.textContent = `${itens.length} item(s) adicionado(s).`;
   itensCount.textContent = `${itens.length} item(s)`;
 
-  document.querySelectorAll('.btn-remove-item').forEach(button => {
+  itensBody.querySelectorAll('.btn-remove-item').forEach(button => {
     button.addEventListener('click', () => {
       itens.splice(Number(button.dataset.index), 1);
       renderItens();
@@ -58,69 +62,40 @@ function renderItens() {
   recalcular();
 }
 
-function recalcular() {
-  const subtotal = itens.reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
-  const adicional = fields[0]?.valueAsNumber || 0;
-  const bebidas = fields[1]?.valueAsNumber || 0;
-  const frete = fields[2]?.valueAsNumber || 0;
-  const desconto = fields[3]?.valueAsNumber || 0;
-  const total = Math.max(0, subtotal + adicional + bebidas + frete - desconto);
-
-  const subtotalInput = document.getElementById('subtotal');
-  if (subtotalInput) subtotalInput.value = money(subtotal);
-
-  document.getElementById('subtotalTotal').textContent = money(subtotal);
-  document.getElementById('totalPedido').textContent = money(total);
-}
-
-produto?.addEventListener('change', () => {
-  const option = produto.selectedOptions[0];
-  if (!option?.value) return;
-
-  valor.value = Number(option.dataset.preco || 0).toFixed(2);
-
-  const categoria = option.dataset.categoria;
-  tamanho.value = categoria === 'MARMITA' ? 'M' : 'UNICO';
-});
-
 document.getElementById('adicionarItem')?.addEventListener('click', () => {
-  const option = produto?.selectedOptions[0];
-
-  if (!option?.value) {
-    alert('Selecione um produto antes de adicionar.');
-    produto?.focus();
+  const quantidadeValor = Number(quantidade.value);
+  const preco = Number(valorUnitario.value);
+  if (!Number.isSafeInteger(quantidadeValor) || quantidadeValor < 1) {
+    quantidade.setCustomValidity('Informe uma quantidade inteira maior que zero.');
+    quantidade.reportValidity();
+    quantidade.setCustomValidity('');
+    quantidade.focus();
+    return;
+  }
+  if (!Number.isFinite(preco) || preco < 0) {
+    valorUnitario.reportValidity();
+    valorUnitario.focus();
     return;
   }
 
-  const quantidadeValor = Math.max(1, Number(quantidade.value || 1));
-  const valorUnitario = Math.max(0, Number(valor.value || 0));
-
+  const subtotal = Math.round(quantidadeValor * preco * 100) / 100;
   itens.push({
-    produto_id: Number(option.value),
-    nome: option.textContent.split(' — ')[0].trim(),
-    tamanho: tamanho.value || 'UNICO',
+    tamanho: tamanho.value,
     quantidade: quantidadeValor,
-    valor_unitario: valorUnitario,
-    subtotal: quantidadeValor * valorUnitario
+    valor_unitario: Math.round(preco * 100) / 100,
+    subtotal
   });
-
-  produto.value = '';
   quantidade.value = '1';
-  valor.value = '0.00';
-  tamanho.value = 'UNICO';
-
+  valorUnitario.value = '0.00';
   renderItens();
 });
 
-[quantidade, valor, ...fields].forEach(el => {
-  el?.addEventListener('input', recalcular);
-});
+fields.forEach(field => field?.addEventListener('input', recalcular));
 
 form?.addEventListener('submit', async event => {
   event.preventDefault();
 
   const message = document.getElementById('formMessage');
-
   if (!itens.length) {
     message.textContent = 'Adicione pelo menos um item à venda.';
     message.className = 'form-message error';

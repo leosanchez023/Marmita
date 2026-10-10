@@ -38,8 +38,6 @@ async function carregarOpcoes() {
   const res = await fetch('/relatorios/opcoes');
   const data = await res.json();
   if (!res.ok || data.success === false) throw new Error(data.message || 'Não foi possível carregar os filtros.');
-  const select = document.getElementById('produto');
-  (data.produtos || []).forEach(p => select.insertAdjacentHTML('beforeend', `<option value="${p.id}">${esc(p.nome)}</option>`));
 
   const pagamento = document.getElementById('pagamento');
   pagamento.innerHTML = '<option value="">Todos</option>';
@@ -52,7 +50,6 @@ function render(data) {
   const r = data.resumo || {};
   document.getElementById('totalVendido').textContent = brl(r.total_vendido);
   document.getElementById('totalPedidos').textContent = numero(r.total_pedidos);
-  document.getElementById('qtdMarmitas').textContent = numero(r.qtd_produtos_vendidos);
   document.getElementById('ticketMedio').textContent = brl(r.ticket_medio);
   document.getElementById('totalFretes').textContent = brl(r.total_fretes);
   document.getElementById('totalBebidas').textContent = brl(r.total_bebidas);
@@ -67,10 +64,8 @@ function render(data) {
   }
 
   const pagamentos = Array.isArray(data.pagamentos) ? data.pagamentos : [];
-  const produtos = Array.isArray(data.produtos) ? data.produtos : [];
   const vendas = Array.isArray(data.vendas) ? data.vendas : [];
   document.getElementById('pagamentosBody').innerHTML = pagamentos.length ? pagamentos.map(x => `<tr><td>${esc(x.forma_pagamento)}</td><td>${numero(x.pedidos)}</td><td>${brl(x.total)}</td></tr>`).join('') : '<tr><td colspan="3" class="empty">Sem dados.</td></tr>';
-  document.getElementById('produtosBody').innerHTML = produtos.length ? produtos.map(x => `<tr><td>${esc(x.nome)}</td><td>${numero(x.quantidade)}</td><td>${brl(x.total)}</td></tr>`).join('') : '<tr><td colspan="3" class="empty">Sem dados.</td></tr>';
   document.getElementById('vendasBody').innerHTML = vendas.length ? vendas.map(x => `<tr><td>#${esc(x.numero_pedido || '')}</td><td>${esc(x.data || '')}</td><td>${esc(x.cliente)}</td><td>${esc(x.responsavel)}</td><td>${esc(x.forma_pagamento)}</td><td>${numero(x.quantidade_itens)}</td><td>${brl(x.total)}</td><td>${esc(x.status)}</td></tr>`).join('') : '<tr><td colspan="8" class="empty">Sem dados.</td></tr>';
   document.getElementById('vendasCount').textContent = `${vendas.length} venda(s)`;
 
@@ -86,7 +81,7 @@ async function gerarRelatorios() {
   }
 
   const qs = new URLSearchParams();
-  ['inicio','fim','pagamento','produto'].forEach(id => { const v = document.getElementById(id).value; if (v) qs.set(id, v); });
+  ['inicio','fim','pagamento'].forEach(id => { const v = document.getElementById(id).value; if (v) qs.set(id, v); });
   const botao = document.getElementById('filtrar');
   botao.disabled = true;
   try {

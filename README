@@ -1,23 +1,33 @@
 # Marmitaria — Painel de Vendas
 
-Aplicação web em **Node.js + Express + Handlebars + MySQL + Passport**, mantendo a arquitetura modular do projeto original.
+Aplicação web em **Node.js + Express + Handlebars + Supabase/PostgreSQL + Passport**, mantendo a arquitetura modular do projeto original.
 
 ## Funcionalidades
 
 - Login com sessão e senha criptografada com bcrypt.
-- Cadastro de nova venda.
-- Cálculo automático de subtotal, adicionais, bebidas, frete, desconto e total.
-- Cliente, produto/marmita, tamanho, quantidade e forma de pagamento vindos do banco.
+- Cadastro de vendas com tamanho, quantidade e preço unitário, sem seleção de produto.
+- Cálculo automático do subtotal, adicionais, bebidas, frete, desconto e total.
+- Cliente e forma de pagamento vindos do banco.
 - Listagem de vendas recentes.
-- Relatórios com filtros por período, pagamento e produto.
-- Indicadores de total vendido, pedidos, quantidade, fretes, bebidas e descontos.
-- Vendas por dia, formas de pagamento, produtos mais vendidos e vendas do período.
+- Relatórios com filtros por período e forma de pagamento.
+- Indicadores de total vendido, pedidos, quantidades, fretes, bebidas e descontos.
+- Vendas por dia, formas de pagamento e vendas do período.
 
 ## Banco de dados
 
-1. Crie o banco executando `database/schema.sql`.
-2. Execute `database/seed.sql`.
-3. Confira o `.env` com os dados do MySQL.
+O projeto usa Supabase/PostgreSQL. Execute `database/schema.sql` no SQL Editor do Supabase.
+Esse arquivo consolida a estrutura das tabelas e as alterações das migrations: mantém itens
+com tamanho, quantidade e preço, sem catálogo de produtos. Se uma migration anterior já
+apagou a tabela `venda_itens`, os itens históricos apagados não podem ser recuperados.
+
+No `.env`, configure `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` com a chave secreta
+`service_role` do projeto Supabase. Essa chave é usada exclusivamente pelo backend e não
+deve ser enviada ao navegador, publicada ou compartilhada. `SUPABASE_KEY` com papel `anon`
+é insuficiente para gravar vendas protegidas por RLS. Não desative o RLS nem crie policies
+públicas para contornar esse erro.
+
+Execute `database/seed.sql` depois do schema para inserir o usuário administrador e dados
+iniciais.
 
 Login inicial:
 

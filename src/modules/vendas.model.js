@@ -12,16 +12,6 @@ async function consultarTodos(consulta) {
   }
 }
 
-export async function listarProdutos() {
-  return consultarTodos(supabase
-    .from('produtos')
-    .select('id, nome, categoria, preco')
-    .eq('ativo', true)
-    .order('categoria')
-    .order('nome'));
-}
-
-
 export async function listarFormasPagamento() {
   return consultarTodos(supabase
     .from('formas_pagamento')
@@ -49,20 +39,16 @@ export async function listarVendasRecentes() {
   const itens = ids.length
     ? await consultarTodos(supabase
       .from('venda_itens')
-      .select('venda_id, quantidade, produto_id')
+      .select('venda_id, quantidade')
       .in('venda_id', ids))
     : [];
-  const produtoIds = [...new Set(itens.map(item => item.produto_id))];
-  const produtos = produtoIds.length
-    ? await consultarTodos(supabase.from('produtos').select('id, nome').in('id', produtoIds))
-    : [];
-  const nomes = new Map(produtos.map(produto => [produto.id, produto.nome]));
-  const itensPorVenda = new Map();
+  const quantidadePorVenda = new Map();
 
   for (const item of itens) {
-    const lista = itensPorVenda.get(item.venda_id) || [];
-    lista.push(`${nomes.get(item.produto_id) || 'Produto'} x${item.quantidade}`);
-    itensPorVenda.set(item.venda_id, lista);
+    quantidadePorVenda.set(
+      item.venda_id,
+      (quantidadePorVenda.get(item.venda_id) || 0) + Number(item.quantidade || 0)
+    );
   }
 
   return vendas.map(venda => ({
@@ -70,7 +56,7 @@ export async function listarVendasRecentes() {
     data_venda: dataBr(venda.data_venda),
     cliente: venda.cliente || 'Consumidor',
     forma_pagamento: venda.forma_pagamento || 'Não informado',
-    itens: (itensPorVenda.get(venda.id) || []).join(', ')
+    quantidade_itens: quantidadePorVenda.get(venda.id) || 0
   }));
 }
 
@@ -81,8 +67,12 @@ function dataBr(value) {
 }
 
 function valorNumero(value) {
+  if (value === undefined || value === null || value === '') return 0;
   const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
+  if (!Number.isFinite(n) || n > 99999999.99) {
+    throw new Error('Informe um valor válido para os campos da venda.');
+  }
+  return Math.round(n * 100) / 100;
 }
 
 export async function criarVenda(payload, usuarioId) {
@@ -90,72 +80,57 @@ export async function criarVenda(payload, usuarioId) {
 
   try {
     let itens = payload.itens;
-
     if (typeof itens === 'string') {
       try {
         itens = JSON.parse(itens);
       } catch {
-        itens = [];
+        throw new Error('A lista de itens da venda é inválida.');
       }
     }
-
     if (!Array.isArray(itens) || itens.length === 0) {
-      // Compatibilidade com o formulário antigo de item único.
-      if (payload.produto_id) {
-        itens = [{
-          produto_id: payload.produto_id,
-          tamanho: payload.tamanho || 'UNICO',
-          quantidade: payload.quantidade || 1,
-          valor_unitario: payload.valor_unitario
-        }];
-      }
-    }
-
-    if (!itens.length) {
       throw new Error('Adicione pelo menos um item à venda.');
     }
 
+    const tamanhosPermitidos = new Set(['UNICO', 'P', 'M', 'G', 'GG']);
+    const itensValidos = itens.map(item => {
+      if (!item || typeof item !== 'object') {
+        throw new Error('Um dos itens da venda é inválido.');
+      }
+      const quantidade = Number(item.quantidade);
+      const valorUnitario = Number(item.valor_unitario);
+      if (!tamanhosPermitidos.has(item.tamanho)) {
+        throw new Error('Selecione um tamanho válido para cada item.');
+      }
+      if (!Number.isSafeInteger(quantidade) || quantidade < 1 || quantidade > 4294967295) {
+        throw new Error('A quantidade de cada item deve ser um inteiro maior que zero.');
+      }
+      if (!Number.isFinite(valorUnitario) || valorUnitario < 0 || valorUnitario > 99999999.99) {
+        throw new Error('O preço de cada item deve ser um valor válido e não negativo.');
+      }
+      const precoArredondado = Math.round(valorUnitario * 100) / 100;
+      const subtotalItem = Math.round(quantidade * precoArredondado * 100) / 100;
+      if (!Number.isFinite(subtotalItem) || subtotalItem > 99999999.99) {
+        throw new Error('O subtotal de cada item excede o limite permitido.');
+      }
+      return {
+        tamanho: item.tamanho,
+        quantidade,
+        valorUnitario: precoArredondado,
+        subtotal: subtotalItem
+      };
+    });
+    const subtotal = Math.round(itensValidos.reduce((soma, item) => soma + item.subtotal, 0) * 100) / 100;
+    if (subtotal > 99999999.99) {
+      throw new Error('O subtotal da venda excede o limite permitido.');
+    }
     const adicional = Math.max(0, valorNumero(payload.adicional));
     const bebidas = Math.max(0, valorNumero(payload.bebidas));
     const frete = Math.max(0, valorNumero(payload.frete));
     const desconto = Math.max(0, valorNumero(payload.desconto));
-
-    let subtotal = 0;
-    const itensValidos = [];
-
-    for (const item of itens) {
-      const produtoId = Number(item.produto_id);
-      const quantidade = Math.max(1, Number(item.quantidade || 1));
-
-      const { data: produto, error: produtoError } = await supabase
-        .from('produtos')
-        .select('id, nome, preco')
-        .eq('id', produtoId)
-        .eq('ativo', true)
-        .maybeSingle();
-
-      if (produtoError) throw produtoError;
-      if (!produto) {
-        throw new Error(`Produto ${produtoId} não encontrado.`);
-      }
-
-      const valorUnitario = Math.max(
-        0,
-        valorNumero(item.valor_unitario) || Number(produto.preco)
-      );
-      const itemSubtotal = quantidade * valorUnitario;
-
-      subtotal += itemSubtotal;
-      itensValidos.push({
-        produtoId,
-        tamanho: item.tamanho || 'UNICO',
-        quantidade,
-        valorUnitario,
-        subtotal: itemSubtotal
-      });
+    const total = Math.round(Math.max(0, subtotal + adicional + bebidas + frete - desconto) * 100) / 100;
+    if (total > 99999999.99) {
+      throw new Error('O total da venda excede o limite permitido.');
     }
-
-    const total = Math.max(0, subtotal + adicional + bebidas + frete - desconto);
     const dataVenda = payload.data_venda || new Date().toISOString().slice(0, 10);
 
     let formaPagamentoId = payload.forma_pagamento_id
@@ -207,15 +182,15 @@ export async function criarVenda(payload, usuarioId) {
       .eq('id', vendaId);
     if (numeroError) throw numeroError;
 
-    const itensVenda = itensValidos.map(item => ({
-      venda_id: vendaId,
-      produto_id: item.produtoId,
-      tamanho: item.tamanho,
-      quantidade: item.quantidade,
-      valor_unitario: item.valorUnitario,
-      subtotal: item.subtotal
-    }));
-    const { error: itensError } = await supabase.from('venda_itens').insert(itensVenda);
+    const { error: itensError } = await supabase.from('venda_itens').insert(
+      itensValidos.map(item => ({
+        venda_id: vendaId,
+        tamanho: item.tamanho,
+        quantidade: item.quantidade,
+        valor_unitario: item.valorUnitario,
+        subtotal: item.subtotal
+      }))
+    );
     if (itensError) throw itensError;
 
     return { id: vendaId, numeroPedido, total };

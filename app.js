@@ -1,5 +1,4 @@
-import dotenv from 'dotenv';
-dotenv.config();
+import 'dotenv/config';
 
 import express from 'express';
 import { engine } from 'express-handlebars';
@@ -10,6 +9,7 @@ import flash from 'connect-flash';
 import passport from 'passport';
 import auth from './src/config/auth.js';
 import { protegerAplicacao } from './src/config/access.js';
+import supabase from './src/config/supabase.js';
 
 import loginRoutes from './src/modules/login/login.routes.js';
 import vendasRoutes from './src/modules/vendas.routes.js';
@@ -74,4 +74,20 @@ app.use((error, req, res, next) => {
 });
 
 const PORT = Number(process.env.PORT) || 3000;
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+app.listen(PORT, async () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
+
+  try {
+    for (const tabela of ['usuario', 'vendas', 'venda_itens']) {
+      const { error } = await supabase.from(tabela).select('id').limit(1);
+      if (error) {
+        console.error(`Supabase acessível, mas a tabela ${tabela} não está disponível:`, error.message);
+        return;
+      }
+    }
+
+    console.log('Supabase conectado; tabelas de vendas acessíveis.');
+  } catch (error) {
+    console.error('Erro ao conectar ao Supabase:', error);
+  }
+});
