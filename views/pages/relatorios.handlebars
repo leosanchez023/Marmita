@@ -1,21 +1,32 @@
 <link rel="stylesheet" href="/css/pages/marmitaria.css">
 <div class="marmita-page reports-page" data-page-title="Relatórios" data-page-subtitle="Filtre por período e forma de pagamento para consultar os resultados.">
+  <div class="print-report-header">
+    <h1>Relatório de vendas</h1>
+    <p id="periodoImpressao"></p>
+  </div>
   <section class="filters-card">
     <div class="filter-field"><label for="periodo">PERÍODO</label><select id="periodo"><option value="hoje">Hoje</option><option value="ontem">Ontem</option><option value="7dias" selected>Últimos 7 dias</option><option value="30dias">Últimos 30 dias</option><option value="mes">Este mês</option><option value="mesAnterior">Mês anterior</option><option value="personalizado">Período personalizado</option></select></div>
     <div class="filter-field"><label>DATA INICIAL</label><input type="date" id="inicio"></div>
     <div class="filter-field"><label>DATA FINAL</label><input type="date" id="fim"></div>
     <div class="filter-field"><label>PAGAMENTO</label><select id="pagamento"><option value="">Todos</option></select></div>
     <button class="filter-button" id="filtrar">Filtrar</button>
+    <button class="filter-button print-button" id="imprimirRelatorio" type="button"><i class="fa-solid fa-print" aria-hidden="true"></i> Gerar relatório</button>
   </section>
   <p id="relatorioMensagem" class="empty" role="status" aria-live="polite" hidden></p>
 
   <section class="kpi-grid">
     <div class="kpi"><span>TOTAL VENDIDO</span><strong id="totalVendido">R$ 0,00</strong></div>
     <div class="kpi"><span>TOTAL DE VENDAS</span><strong id="totalPedidos">0</strong></div>
+    <div class="kpi"><span>TOTAL DE MARMITAS</span><strong id="totalMarmitas">0</strong></div>
     <div class="kpi"><span>TICKET MÉDIO</span><strong id="ticketMedio">R$ 0,00</strong></div>
     <div class="kpi"><span>TOTAL DE FRETES</span><strong id="totalFretes">R$ 0,00</strong></div>
     <div class="kpi"><span>TOTAL DE BEBIDAS</span><strong id="totalBebidas">R$ 0,00</strong></div>
     <div class="kpi"><span>TOTAL DE DESCONTOS</span><strong id="totalDescontos">R$ 0,00</strong></div>
+  </section>
+
+  <section class="report-card">
+    <div class="section-heading"><div><h2>Marmitas vendidas por tamanho</h2><p>Quantidade de unidades no período e filtros selecionados.</p></div><span id="marmitasCount">0 marmita(s)</span></div>
+    <table><thead><tr><th>TAMANHO</th><th>QUANTIDADE VENDIDA</th></tr></thead><tbody id="marmitasBody"><tr><td colspan="2" class="empty">Sem dados.</td></tr></tbody></table>
   </section>
 
   <section class="report-columns">
@@ -25,6 +36,60 @@
     </div>
   </section>
 
-  <section class="report-card"><div class="section-heading"><div><h2>Vendas por período</h2></div><span id="vendasCount">0 venda(s)</span></div><table><thead><tr><th>PEDIDO</th><th>DATA</th><th>CLIENTE</th><th>RESPONSÁVEL</th><th>PAGAMENTO</th><th>QUANTIDADE</th><th>VALOR</th><th>STATUS</th></tr></thead><tbody id="vendasBody"><tr><td colspan="8" class="empty">Sem dados.</td></tr></tbody></table></section>
+  <section class="report-card">
+    <div class="section-heading"><div><h2>Vendas por período</h2></div><span id="vendasCount">0 venda(s)</span></div>
+    <div class="table-card">
+      <table>
+        <thead><tr><th>PEDIDO</th><th>DATA</th><th>CLIENTE</th><th>RESPONSÁVEL</th><th>PAGAMENTO</th><th>QUANTIDADE</th><th>VALOR</th><th>STATUS</th></tr></thead>
+        <tbody id="vendasBody"><tr><td colspan="8" class="empty">Sem dados.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="relatorioImpressao" class="print-report" aria-label="Relatório de vendas para impressão">
+    <header class="print-report__header">
+      <div>
+        <p class="print-report__brand">MARMITARIA</p>
+        <h1>RELATÓRIO DE VENDAS</h1>
+      </div>
+      <div class="print-report__period">
+        <span>PERÍODO</span>
+        <strong id="impressaoPeriodo"></strong>
+        <span id="impressaoFiltroPagamento" hidden></span>
+      </div>
+    </header>
+    <p class="print-report__generated">Emitido em <time id="impressaoGeradoEm"></time></p>
+
+    <section class="print-report__summary" aria-label="Resumo financeiro">
+      <div><span>VENDAS</span><strong id="impressaoQuantidadeVendas"></strong></div>
+      <div><span>TOTAL VENDIDO</span><strong id="impressaoTotalVendido"></strong></div>
+      <div><span>TOTAL DOS ITENS</span><strong id="impressaoTotalItens"></strong></div>
+      <div><span>TICKET MÉDIO</span><strong id="impressaoTicketMedio"></strong></div>
+      <div id="impressaoDescontosResumo" hidden><span>DESCONTOS</span><strong id="impressaoDescontos"></strong></div>
+      <div id="impressaoTotalMarmitasResumo" hidden><span>MARMITAS</span><strong id="impressaoTotalMarmitas"></strong></div>
+    </section>
+
+    <section id="impressaoPagamentosSecao" class="print-report__section" hidden>
+      <h2>RESUMO POR FORMA DE PAGAMENTO</h2>
+      <table>
+        <thead><tr><th>FORMA DE PAGAMENTO</th><th class="print-report__number">VENDAS</th><th class="print-report__number">TOTAL</th></tr></thead>
+        <tbody id="impressaoPagamentosBody"></tbody>
+      </table>
+    </section>
+
+    <section id="impressaoTamanhosSecao" class="print-report__section" hidden>
+      <h2>MARMITAS VENDIDAS POR TAMANHO</h2>
+      <table>
+        <thead><tr><th>TAMANHO</th><th class="print-report__number">QUANTIDADE</th></tr></thead>
+        <tbody id="impressaoTamanhosBody"></tbody>
+      </table>
+    </section>
+
+    <section id="impressaoGraficoSecao" class="print-report__section print-report__sales">
+      <h2>VENDAS POR DIA</h2>
+      <div id="impressaoGraficoVendas" class="print-chart" role="img" aria-label="Gráfico de vendas por dia"></div>
+    </section>
+    <footer class="print-report__footer">Marmitaria · Relatório emitido em <span id="impressaoRodape"></span></footer>
+  </section>
 </div>
 <script src="/js/relatorios.js"></script>

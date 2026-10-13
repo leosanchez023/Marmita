@@ -9,6 +9,7 @@ const itensCount = document.getElementById('itensCount');
 const fields = ['adicional', 'bebidas', 'frete', 'desconto']
   .map(id => document.getElementById(id));
 const itens = [];
+let vendaEmEdicao = null;
 
 const money = value => Number(value || 0).toLocaleString('pt-BR', {
   style: 'currency',
@@ -104,6 +105,8 @@ form?.addEventListener('submit', async event => {
 
   message.textContent = 'Salvando...';
   message.className = 'form-message';
+  const submitButton = document.getElementById('salvarVendaBtn');
+  submitButton.disabled = true;
 
   const payload = {
     data_venda: data.value,
@@ -118,8 +121,8 @@ form?.addEventListener('submit', async event => {
   };
 
   try {
-    const response = await fetch('/vendas', {
-      method: 'POST',
+    const response = await fetch(vendaEmEdicao ? `/vendas/${vendaEmEdicao}` : '/vendas', {
+      method: vendaEmEdicao ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
@@ -132,7 +135,11 @@ form?.addEventListener('submit', async event => {
       return;
     }
 
-    message.textContent = `Venda #${result.venda.numeroPedido} salva com sucesso.`;
+    if (vendaEmEdicao) {
+      message.textContent = `Venda #${String(vendaEmEdicao).padStart(4, '0')} atualizada com sucesso.`;
+    } else {
+      message.textContent = `Venda #${result.venda.numeroPedido} salva com sucesso.`;
+    }
     message.className = 'form-message success';
 
     setTimeout(() => window.location.reload(), 700);
@@ -140,14 +147,94 @@ form?.addEventListener('submit', async event => {
     console.error(error);
     message.textContent = 'Não foi possível conectar ao servidor.';
     message.className = 'form-message error';
+  } finally {
+    submitButton.disabled = false;
   }
 });
 
-document.getElementById('limparBtn')?.addEventListener('click', () => {
+function limparFormulario() {
+  vendaEmEdicao = null;
+  form.querySelectorAll('[data-historical-option]').forEach(option => option.remove());
   form.reset();
   data.value = new Date().toISOString().slice(0, 10);
   itens.length = 0;
+  document.getElementById('salvarVendaBtn').textContent = 'Salvar venda';
+  document.getElementById('cancelarEdicaoBtn').hidden = true;
+  document.getElementById('formMessage').textContent = '';
+  document.getElementById('formMessage').className = 'form-message';
   renderItens();
+}
+
+document.getElementById('limparBtn')?.addEventListener('click', limparFormulario);
+document.getElementById('cancelarEdicaoBtn')?.addEventListener('click', limparFormulario);
+
+document.querySelectorAll('.btn-sale-edit').forEach(button => {
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      const response = await fetch(`/vendas/${button.dataset.vendaId}`);
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Não foi possível carregar a venda.');
+
+      const venda = result.venda;
+      limparFormulario();
+      vendaEmEdicao = venda.id;
+      data.value = String(venda.data_venda).slice(0, 10);
+      const cliente = document.getElementById('cliente_id');
+      const clienteId = venda.cliente_id ? String(venda.cliente_id) : '';
+      if (clienteId && ![...cliente.options].some(option => option.value === clienteId)) {
+        const option = new Option(venda.cliente_nome || 'Cliente inativo', clienteId);
+        option.dataset.historicalOption = 'true';
+        cliente.add(option);
+      }
+      cliente.value = clienteId;
+      const pagamento = document.getElementById('forma_pagamento_id');
+      const pagamentoId = venda.forma_pagamento_id ? String(venda.forma_pagamento_id) : '';
+      if (pagamentoId && ![...pagamento.options].some(option => option.value === pagamentoId)) {
+        const option = new Option(venda.forma_pagamento_nome || 'Forma de pagamento inativa', pagamentoId);
+        option.dataset.historicalOption = 'true';
+        pagamento.add(option);
+      }
+      pagamento.value = pagamentoId;
+      document.getElementById('adicional').value = Number(venda.adicional || 0).toFixed(2);
+      document.getElementById('bebidas').value = Number(venda.bebidas || 0).toFixed(2);
+      document.getElementById('frete').value = Number(venda.frete || 0).toFixed(2);
+      document.getElementById('desconto').value = Number(venda.desconto || 0).toFixed(2);
+      document.getElementById('observacao').value = venda.observacao || '';
+      itens.push(...venda.itens.map(item => ({
+        tamanho: item.tamanho,
+        quantidade: Number(item.quantidade),
+        valor_unitario: Number(item.valor_unitario),
+        subtotal: Math.round(Number(item.quantidade) * Number(item.valor_unitario) * 100) / 100
+      })));
+      document.getElementById('salvarVendaBtn').textContent = 'Salvar alterações';
+      document.getElementById('cancelarEdicaoBtn').hidden = false;
+      document.getElementById('formMessage').textContent = `Editando venda #${venda.numero_pedido}.`;
+      document.getElementById('formMessage').className = 'form-message';
+      renderItens();
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+      window.alert(error.message || 'Não foi possível carregar a venda.');
+    } finally {
+      button.disabled = false;
+    }
+  });
+});
+
+document.querySelectorAll('.btn-sale-delete').forEach(button => {
+  button.addEventListener('click', async () => {
+    if (!window.confirm('Tem certeza que deseja excluir esta venda? Esta ação não pode ser desfeita.')) return;
+    button.disabled = true;
+    try {
+      const response = await fetch(`/vendas/${button.dataset.vendaId}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Não foi possível excluir a venda.');
+      window.location.reload();
+    } catch (error) {
+      window.alert(error.message || 'Não foi possível excluir a venda.');
+      button.disabled = false;
+    }
+  });
 });
 
 renderItens();

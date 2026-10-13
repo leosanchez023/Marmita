@@ -29,11 +29,12 @@
         <div class="field">
           <label for="tamanho">TAMANHO</label>
           <select id="tamanho">
-            <option value="UNICO">Único</option>
+            <option value="UNICO" selected>Único</option>
             <option value="P">P</option>
             <option value="M">M</option>
             <option value="G">G</option>
-            <option value="GG">GG</option>
+            <option value="E">E</option>
+            <option value="S">S</option>
           </select>
         </div>
         <div class="field">
@@ -115,7 +116,8 @@
       </div>
 
       <div class="actions">
-        <button class="btn-primary" type="submit">Salvar venda</button>
+        <button class="btn-primary" type="submit" id="salvarVendaBtn">Salvar venda</button>
+        <button class="btn-secondary" type="button" id="cancelarEdicaoBtn" hidden>Cancelar edição</button>
         <button class="btn-secondary" type="button" id="limparBtn">Limpar formulário</button>
       </div>
 
@@ -142,6 +144,7 @@
             <th>QUANTIDADE</th>
             <th>PAGAMENTO</th>
             <th>TOTAL</th>
+            <th>AÇÕES</th>
           </tr>
         </thead>
         <tbody>
@@ -153,9 +156,17 @@
               <td>{{quantidade_itens}}</td>
               <td>{{forma_pagamento}}</td>
               <td>{{moeda total}}</td>
+              <td class="sale-actions">
+                <button class="btn-secondary btn-sale-edit" type="button" data-venda-id="{{id}}" title="Editar venda">
+                  <i class="fa-solid fa-pen"></i> Editar
+                </button>
+                <button class="btn-secondary btn-sale-delete" type="button" data-venda-id="{{id}}" title="Excluir venda">
+                  <i class="fa-solid fa-trash"></i> Excluir
+                </button>
+              </td>
             </tr>
           {{else}}
-            <tr><td colspan="6" class="empty">Nenhuma venda cadastrada.</td></tr>
+            <tr><td colspan="7" class="empty">Nenhuma venda cadastrada.</td></tr>
           {{/each}}
         </tbody>
       </table>

@@ -1,6 +1,7 @@
 const numero = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 const brl = value => numero(value).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 const esc = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const dataBr = value => value ? new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR') : '';
 
 const dataLocal = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
@@ -50,6 +51,7 @@ function render(data) {
   const r = data.resumo || {};
   document.getElementById('totalVendido').textContent = brl(r.total_vendido);
   document.getElementById('totalPedidos').textContent = numero(r.total_pedidos);
+  document.getElementById('totalMarmitas').textContent = numero(r.total_marmitas);
   document.getElementById('ticketMedio').textContent = brl(r.ticket_medio);
   document.getElementById('totalFretes').textContent = brl(r.total_fretes);
   document.getElementById('totalBebidas').textContent = brl(r.total_bebidas);
@@ -64,20 +66,99 @@ function render(data) {
   }
 
   const pagamentos = Array.isArray(data.pagamentos) ? data.pagamentos : [];
+  const marmitas = Array.isArray(data.marmitasPorTamanho) ? data.marmitasPorTamanho : [];
   const vendas = Array.isArray(data.vendas) ? data.vendas : [];
   document.getElementById('pagamentosBody').innerHTML = pagamentos.length ? pagamentos.map(x => `<tr><td>${esc(x.forma_pagamento)}</td><td>${numero(x.pedidos)}</td><td>${brl(x.total)}</td></tr>`).join('') : '<tr><td colspan="3" class="empty">Sem dados.</td></tr>';
-  document.getElementById('vendasBody').innerHTML = vendas.length ? vendas.map(x => `<tr><td>#${esc(x.numero_pedido || '')}</td><td>${esc(x.data || '')}</td><td>${esc(x.cliente)}</td><td>${esc(x.responsavel)}</td><td>${esc(x.forma_pagamento)}</td><td>${numero(x.quantidade_itens)}</td><td>${brl(x.total)}</td><td>${esc(x.status)}</td></tr>`).join('') : '<tr><td colspan="8" class="empty">Sem dados.</td></tr>';
+  document.getElementById('marmitasBody').innerHTML = marmitas.length
+    ? marmitas.map(x => `<tr><td>${esc(x.tamanho === 'UNICO' ? 'Único' : x.tamanho)}</td><td>${numero(x.quantidade)}</td></tr>`).join('')
+    : '<tr><td colspan="2" class="empty">Sem dados.</td></tr>';
+  document.getElementById('marmitasCount').textContent = `${numero(r.total_marmitas)} marmita(s)`;
+  document.getElementById('vendasBody').innerHTML = vendas.length
+    ? vendas.map(x => `<tr><td>#${esc(x.numero_pedido || '')}</td><td>${esc(x.data || '')}</td><td>${esc(x.cliente)}</td><td>${esc(x.responsavel)}</td><td>${esc(x.forma_pagamento)}</td><td>${numero(x.quantidade_itens)}</td><td>${brl(x.total)}</td><td>${esc(x.status)}</td></tr>`).join('')
+    : '<tr><td colspan="8" class="empty">Sem dados.</td></tr>';
   document.getElementById('vendasCount').textContent = `${vendas.length} venda(s)`;
 
+  const periodo = `${dataBr(document.getElementById('inicio').value)} a ${dataBr(document.getElementById('fim').value)}`;
+  const pagamentoSelect = document.getElementById('pagamento');
+  const pagamentoNome = pagamentoSelect.selectedOptions[0]?.textContent || 'Todos';
+  document.getElementById('periodoImpressao').textContent = `Período: ${periodo} | Pagamento: ${pagamentoNome}`;
+
+  renderizarRelatorioImpressao(data);
   const semVendas = numero(r.total_pedidos) === 0;
   mostrarMensagem(semVendas ? 'Nenhuma venda encontrada para o período selecionado.' : '');
+}
+
+function renderizarRelatorioImpressao(data) {
+  const resumo = data.resumo || {};
+  const pagamentos = (Array.isArray(data.pagamentos) ? data.pagamentos : [])
+    .filter(item => item.forma_pagamento && item.forma_pagamento !== 'Não informado');
+  const tamanhos = (Array.isArray(data.marmitasPorTamanho) ? data.marmitasPorTamanho : [])
+    .filter(item => numero(item.quantidade) > 0);
+  const vendasPorDia = Array.isArray(data.vendasPorDia) ? data.vendasPorDia : [];
+  const geradoEm = new Date();
+  const geradoEmTexto = geradoEm.toLocaleString('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short'
+  });
+  const geradoEmElement = document.getElementById('impressaoGeradoEm');
+
+  document.getElementById('impressaoPeriodo').textContent =
+    `${dataBr(document.getElementById('inicio').value)} a ${dataBr(document.getElementById('fim').value)}`;
+  const pagamentoSelect = document.getElementById('pagamento');
+  const filtroPagamento = document.getElementById('impressaoFiltroPagamento');
+  filtroPagamento.hidden = !pagamentoSelect.value;
+  filtroPagamento.textContent = pagamentoSelect.value
+    ? `Pagamento: ${pagamentoSelect.selectedOptions[0]?.textContent || 'Selecionado'}`
+    : '';
+  geradoEmElement.dateTime = geradoEm.toISOString();
+  geradoEmElement.textContent = geradoEmTexto;
+  document.getElementById('impressaoRodape').textContent = geradoEmTexto;
+  document.getElementById('impressaoQuantidadeVendas').textContent = numero(resumo.total_pedidos);
+  document.getElementById('impressaoTotalVendido').textContent = brl(resumo.total_vendido);
+  document.getElementById('impressaoTotalItens').textContent = brl(resumo.total_itens);
+  document.getElementById('impressaoTicketMedio').textContent = brl(resumo.ticket_medio);
+
+  const descontosResumo = document.getElementById('impressaoDescontosResumo');
+  descontosResumo.hidden = numero(resumo.total_descontos) <= 0;
+  document.getElementById('impressaoDescontos').textContent = brl(resumo.total_descontos);
+
+  const totalMarmitasResumo = document.getElementById('impressaoTotalMarmitasResumo');
+  totalMarmitasResumo.hidden = numero(resumo.total_marmitas) <= 0;
+  document.getElementById('impressaoTotalMarmitas').textContent = numero(resumo.total_marmitas);
+
+  const pagamentosSecao = document.getElementById('impressaoPagamentosSecao');
+  pagamentosSecao.hidden = pagamentos.length === 0;
+  document.getElementById('impressaoPagamentosBody').innerHTML = pagamentos.map(item => `
+    <tr><td>${esc(item.forma_pagamento)}</td><td class="print-report__number">${numero(item.pedidos)}</td><td class="print-report__number">${brl(item.total)}</td></tr>
+  `).join('');
+
+  const tamanhosSecao = document.getElementById('impressaoTamanhosSecao');
+  tamanhosSecao.hidden = tamanhos.length === 0;
+  document.getElementById('impressaoTamanhosBody').innerHTML = tamanhos.map(item => `
+    <tr><td>${esc(item.tamanho === 'UNICO' ? 'Único' : item.tamanho)}</td><td class="print-report__number">${numero(item.quantidade)}</td></tr>
+  `).join('');
+
+  const graficoSecao = document.getElementById('impressaoGraficoSecao');
+  graficoSecao.hidden = vendasPorDia.length === 0;
+  const maiorTotalDia = Math.max(...vendasPorDia.map(item => numero(item.total)), 0);
+  document.getElementById('impressaoGraficoVendas').innerHTML = vendasPorDia.map(item => {
+    const total = numero(item.total);
+    const largura = maiorTotalDia > 0 ? Math.round(total / maiorTotalDia * 100) : 0;
+    return `
+      <div class="print-chart__row">
+        <span class="print-chart__date">${esc(dataBr(item.data))}</span>
+        <span class="print-chart__track"><span class="print-chart__bar" style="width:${largura}%"></span></span>
+        <strong class="print-chart__value">${brl(total)}</strong>
+      </div>
+    `;
+  }).join('');
 }
 
 async function gerarRelatorios() {
   const periodo = document.getElementById('periodo').value;
   if (periodo === 'personalizado' && (!document.getElementById('inicio').value || !document.getElementById('fim').value)) {
     mostrarMensagem('Informe a data inicial e a data final do período personalizado.', true);
-    return;
+    return false;
   }
 
   const qs = new URLSearchParams();
@@ -89,14 +170,19 @@ async function gerarRelatorios() {
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.message || 'Não foi possível gerar o relatório.');
     render(data);
+    return true;
   } catch (error) {
     mostrarMensagem(error.message || 'Não foi possível gerar o relatório.', true);
+    return false;
   } finally {
     botao.disabled = false;
   }
 }
 
 document.getElementById('filtrar')?.addEventListener('click', gerarRelatorios);
+document.getElementById('imprimirRelatorio')?.addEventListener('click', async () => {
+  if (await gerarRelatorios()) window.print();
+});
 document.getElementById('periodo')?.addEventListener('change', event => {
   if (event.target.value === 'personalizado') return;
   definirPeriodo(event.target.value);

@@ -71,7 +71,7 @@ router.get('/dados', async (req, res) => {
     const [vendasBase, itensBase] = idsVendas.length
       ? await Promise.all([
         consultarPorIds('vendas', 'id, usuario_id, forma_pagamento_id', 'id', idsVendas),
-        consultarPorIds('venda_itens', 'venda_id, quantidade', 'venda_id', idsVendas)
+        consultarPorIds('venda_itens', 'venda_id, tamanho, quantidade', 'venda_id', idsVendas)
       ])
       : [[], []];
     const quantidadePorVenda = new Map();
@@ -89,20 +89,37 @@ router.get('/dados', async (req, res) => {
     });
 
     const idsSelecionados = new Set(vendasSelecionadas.map(venda => venda.id));
+    const marmitasPorTamanhoMapa = new Map(
+      ['P', 'M', 'G', 'E', 'S', 'UNICO'].map(tamanho => [tamanho, 0])
+    );
+    for (const item of itensBase) {
+      if (!idsSelecionados.has(item.venda_id)) continue;
+      const tamanho = item.tamanho || 'UNICO';
+      marmitasPorTamanhoMapa.set(
+        tamanho,
+        (marmitasPorTamanhoMapa.get(tamanho) || 0) + valorNumero(item.quantidade)
+      );
+    }
+    const marmitasPorTamanho = [...marmitasPorTamanhoMapa]
+      .map(([tamanho, quantidade]) => ({ tamanho, quantidade }));
+    const totalMarmitas = marmitasPorTamanho.reduce((soma, item) => soma + item.quantidade, 0);
     const idsUsuarios = [...new Set(vendasBase
       .filter(venda => idsSelecionados.has(venda.id) && venda.usuario_id)
       .map(venda => venda.usuario_id))];
     const usuarios = idsUsuarios.length
       ? await consultarPorIds('usuario', 'id, nome', 'id', idsUsuarios)
       : [];
-    const nomeUsuario = new Map(usuarios.map(item => [item.id, item.nome]));
+    const nomeUsuario = new Map(usuarios.map(usuario => [usuario.id, usuario.nome]));
     const usuarioPorVenda = new Map(vendasBase.map(venda => [venda.id, venda.usuario_id]));
 
     const totalVendido = vendasSelecionadas.reduce((soma, venda) => soma + valorNumero(venda.total), 0);
+    const totalItens = vendasSelecionadas.reduce((soma, venda) => soma + valorNumero(venda.subtotal), 0);
     const resumo = {
       total_vendido: totalVendido,
+      total_itens: totalItens,
       total_pedidos: vendasSelecionadas.length,
       ticket_medio: vendasSelecionadas.length ? totalVendido / vendasSelecionadas.length : 0,
+      total_marmitas: totalMarmitas,
       total_fretes: vendasSelecionadas.reduce((soma, venda) => soma + valorNumero(venda.frete), 0),
       total_bebidas: vendasSelecionadas.reduce((soma, venda) => soma + valorNumero(venda.bebidas), 0),
       total_descontos: vendasSelecionadas.reduce((soma, venda) => soma + valorNumero(venda.desconto), 0)
@@ -123,25 +140,23 @@ router.get('/dados', async (req, res) => {
       .map(([data, total]) => ({ data, total }))
       .sort((a, b) => a.data.localeCompare(b.data));
     const pagamentos = [...pagamentosMapa.values()].sort((a, b) => b.total - a.total);
-
-    const vendas = vendasSelecionadas.map(venda => {
-      return {
-        numero_pedido: venda.numero_pedido,
-        data: dataBr(venda.data_venda),
-        cliente: venda.cliente || 'Consumidor',
-        responsavel: nomeUsuario.get(usuarioPorVenda.get(venda.id)) || 'Não informado',
-        quantidade_itens: quantidadePorVenda.get(venda.id) || 0,
-        total: venda.total,
-        forma_pagamento: venda.forma_pagamento || 'Não informado',
-        status: venda.status
-      };
-    });
+    const vendas = vendasSelecionadas.map(venda => ({
+      numero_pedido: venda.numero_pedido || String(venda.id).padStart(4, '0'),
+      data: dataBr(venda.data_venda),
+      cliente: venda.cliente || 'Consumidor',
+      responsavel: nomeUsuario.get(usuarioPorVenda.get(venda.id)) || 'Não informado',
+      quantidade_itens: quantidadePorVenda.get(venda.id) || 0,
+      total: venda.total,
+      forma_pagamento: venda.forma_pagamento || 'Não informado',
+      status: venda.status
+    }));
 
     res.json({
       success: true,
       resumo,
       vendasPorDia,
       pagamentos,
+      marmitasPorTamanho,
       vendas
     });
   } catch (error) {
