@@ -74,6 +74,7 @@ app.use((error, req, res, next) => {
 });
 
 const PORT = Number(process.env.PORT) || 3000;
+
 app.listen(PORT, async () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 
@@ -81,12 +82,12 @@ app.listen(PORT, async () => {
     for (const tabela of ['usuario', 'vendas', 'venda_itens']) {
       const { error } = await supabase.from(tabela).select('id').limit(1);
       if (error) {
-        console.error(`Supabase acessível, mas a tabela ${tabela} não está disponível:`, error.message);
+        console.error(`Erro ao acessar a tabela ${tabela} no Supabase:`, error);
         return;
       }
     }
 
-    console.log('Supabase conectado; tabelas de vendas acessíveis.');
+    console.log('Supabase conectado');
   } catch (error) {
     console.error('Erro ao conectar ao Supabase:', error);
   }

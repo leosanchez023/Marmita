@@ -1,7 +1,6 @@
 
 BEGIN;
 
--- 1. Adiciona o usuário administrador
 INSERT INTO public.usuario (nome, email, senha, ativo)
 VALUES (
     'Administrador',
